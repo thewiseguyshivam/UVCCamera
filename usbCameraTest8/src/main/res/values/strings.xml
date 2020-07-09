@@ -23,4 +23,5 @@
 
 <resources>
 	<string name="app_name">usbCameraTest8</string>
+    <string name="Timer">00</string>
 </resources>

@@ -26,16 +26,24 @@ package com.serenegiant.usbcameratest8;
 import android.animation.Animator;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
+import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
+import android.view.WindowManager;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.animation.ScaleAnimation;
+import android.widget.Chronometer;
 import android.widget.CompoundButton;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -50,8 +58,11 @@ import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.utils.ViewAnimationHelper;
 import com.serenegiant.widget.CameraViewInterface;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public final class MainActivity extends BaseActivity implements CameraDialog.CameraDialogParent {
-	private static final boolean DEBUG = true;	// TODO set false on release
+	private static final boolean DEBUG = false;	// TODO set false on release
 	private static final String TAG = "MainActivity";
 
 	/**
@@ -110,8 +121,13 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 	private View mToolsLayout, mValueLayout;
 	private SeekBar mSettingSeekbar;
 
+	int i = -1; //initialize seconds counter
+
 	@Override
 	protected void onCreate(final Bundle savedInstanceState) {
+
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); //keep screen alive when in app
+
 		super.onCreate(savedInstanceState);
 		if (DEBUG) Log.v(TAG, "onCreate:");
 		setContentView(R.layout.activity_main);
@@ -138,6 +154,8 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		mToolsLayout.setVisibility(View.INVISIBLE);
 		mValueLayout = findViewById(R.id.value_layout);
 		mValueLayout.setVisibility(View.INVISIBLE);
+
+		Chronometer simpleChronometer = (Chronometer) findViewById(R.id.simpleChronometer); //Init Chronometer
 
 		mUSBMonitor = new USBMonitor(this, mOnDeviceConnectListener);
 		mCameraHandler = UVCCameraHandler.createHandler(this, mUVCCameraView,
@@ -213,17 +231,47 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 		}
 	};
 
+
 	private final CompoundButton.OnCheckedChangeListener mOnCheckedChangeListener
 		= new CompoundButton.OnCheckedChangeListener() {
 		@Override
 		public void onCheckedChanged(final CompoundButton compoundButton, final boolean isChecked) {
+			Chronometer simpleChronometer = (Chronometer) findViewById(R.id.simpleChronometer); //Init Chronometer
+			//Add animation to chronometer text in case sound is off/ or as an additional alert
+			//Animation anim = new AlphaAnimation(0.0f, 1.0f);
+			//Animation anim = new ScaleAnimation(1f,1f,0f,0f);
+			Animation anim = new ScaleAnimation(
+					1f, 1.3f, // Start and end values for the X axis scaling
+					1f, 1.3f, // Start and end values for the Y axis scaling
+					Animation.RELATIVE_TO_SELF, 0.5f, // Pivot point of X scaling
+					Animation.RELATIVE_TO_SELF, 1f);
+			anim.setDuration(80); //You can manage the blinking time with this parameter
+			anim.setStartOffset(20);
+			anim.setRepeatMode(Animation.REVERSE);
+
+			//start tick listener for beep vvvv
+			//add sound every 15 seconds vvvv
+			simpleChronometer.setOnChronometerTickListener(new Chronometer.OnChronometerTickListener() {
+				@Override
+				public void onChronometerTick(Chronometer chronometer) {
+					i++;
+					if (i % 15 == 0) {
+						MediaPlayer mp = MediaPlayer.create(MainActivity.this, R.raw.beep);
+						mp.start();
+						simpleChronometer.startAnimation(anim);
+					}
+				}
+			});
 			switch (compoundButton.getId()) {
 			case R.id.camera_button:
 				if (isChecked && !mCameraHandler.isOpened()) {
 					CameraDialog.showDialog(MainActivity.this);
+					simpleChronometer.setBase(SystemClock.elapsedRealtime());  //reset chronometer
+					simpleChronometer.start(); //start chronometer
 				} else {
 					mCameraHandler.close();
 					setCameraButton(false);
+					simpleChronometer.stop();  //stop chronometer
 				}
 				break;
 			}
@@ -507,5 +555,7 @@ public final class MainActivity extends BaseActivity implements CameraDialog.Cam
 //			if (DEBUG) Log.v(TAG, "onAnimationStart:");
 		}
 	};
+
+
 
 }

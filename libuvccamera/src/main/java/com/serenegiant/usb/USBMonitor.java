@@ -43,7 +43,9 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.os.Build;
 import android.os.Handler;
+import android.support.annotation.RequiresApi;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
@@ -454,7 +456,9 @@ public final class USBMonitor {
 		if (hasPermission(device)) {
 			UsbControlBlock result = mCtrlBlocks.get(device);
 			if (result == null) {
-				result = new UsbControlBlock(USBMonitor.this, device);    // この中でopenDeviceする
+				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+					result = new UsbControlBlock(USBMonitor.this, device);    // この中でopenDeviceする
+				}
 				mCtrlBlocks.put(device, result);
 			}
 			return result;
@@ -560,7 +564,9 @@ public final class USBMonitor {
 				final boolean createNew;
 				ctrlBlock = mCtrlBlocks.get(device);
 				if (ctrlBlock == null) {
-					ctrlBlock = new UsbControlBlock(USBMonitor.this, device);
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+						ctrlBlock = new UsbControlBlock(USBMonitor.this, device);
+					}
 					mCtrlBlocks.put(device, ctrlBlock);
 					createNew = true;
 				} else {
@@ -860,6 +866,7 @@ public final class USBMonitor {
 	 * @param device
 	 * @return
 	 */
+	@RequiresApi(api = Build.VERSION_CODES.M)
 	public UsbDeviceInfo getDeviceInfo(final UsbDevice device) {
 		return updateDeviceInfo(mUsbManager, device, null);
 	}
@@ -871,6 +878,7 @@ public final class USBMonitor {
 	 * @param device
 	 * @return
 	 */
+	@RequiresApi(api = Build.VERSION_CODES.M)
 	public static UsbDeviceInfo getDeviceInfo(final Context context, final UsbDevice device) {
 		return updateDeviceInfo((UsbManager)context.getSystemService(Context.USB_SERVICE), device, new UsbDeviceInfo());
 	}
@@ -882,6 +890,7 @@ public final class USBMonitor {
 	 * @param _info
 	 * @return
 	 */
+	@RequiresApi(api = Build.VERSION_CODES.M)
 	public static UsbDeviceInfo updateDeviceInfo(final UsbManager manager, final UsbDevice device, final UsbDeviceInfo _info) {
 		final UsbDeviceInfo info = _info != null ? _info : new UsbDeviceInfo();
 		info.clear();
@@ -956,7 +965,7 @@ public final class USBMonitor {
 		private final WeakReference<USBMonitor> mWeakMonitor;
 		private final WeakReference<UsbDevice> mWeakDevice;
 		protected UsbDeviceConnection mConnection;
-		protected final UsbDeviceInfo mInfo;
+		protected UsbDeviceInfo mInfo;
 		private final int mBusNum;
 		private final int mDevNum;
 		private final SparseArray<SparseArray<UsbInterface>> mInterfaces = new SparseArray<SparseArray<UsbInterface>>();
@@ -966,6 +975,7 @@ public final class USBMonitor {
 		 * @param monitor
 		 * @param device
 		 */
+		@RequiresApi(api = Build.VERSION_CODES.M)
 		private UsbControlBlock(final USBMonitor monitor, final UsbDevice device) {
 			if (DEBUG) Log.i(TAG, "UsbControlBlock:constructor");
 			mWeakMonitor = new WeakReference<USBMonitor>(monitor);
@@ -1008,7 +1018,9 @@ public final class USBMonitor {
 			if (mConnection == null) {
 				throw new IllegalStateException("device may already be removed or have no permission");
 			}
-			mInfo = updateDeviceInfo(monitor.mUsbManager, device, null);
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				mInfo = updateDeviceInfo(monitor.mUsbManager, device, null);
+			}
 			mWeakMonitor = new WeakReference<USBMonitor>(monitor);
 			mWeakDevice = new WeakReference<UsbDevice>(device);
 			mBusNum = src.mBusNum;
@@ -1241,9 +1253,11 @@ public final class USBMonitor {
 				final int n = device.getInterfaceCount();
 				for (int i = 0; i < n; i++) {
 					final UsbInterface temp = device.getInterface(i);
-					if ((temp.getId() == interface_id) && (temp.getAlternateSetting() == altsetting)) {
-						intf = temp;
-						break;
+					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+						if ((temp.getId() == interface_id) && (temp.getAlternateSetting() == altsetting)) {
+							intf = temp;
+							break;
+						}
 					}
 				}
 				if (intf != null) {
